@@ -1,6 +1,6 @@
 """
-🎯 TIRANGA GAMES WINGO 1MIN PREDICTION BOT v11.0 (RENDER EDITION)
-Features: No Proxy | Flask Web Server for 24/7 Uptime | 3-Level AI
+🎯 TIRANGA GAMES WINGO 1MIN PREDICTION BOT v12.0 (MASTER EDITION)
+Features: No Proxy | Flask Web Server | 3-Level AI | Firebase Admin Panel
 """
 
 import telebot
@@ -8,6 +8,7 @@ import random
 import os
 import json
 import threading
+import requests # Firebase se connect karne ke liye add kiya gaya hai
 from datetime import datetime, timedelta, timezone
 from collections import deque
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -15,9 +16,13 @@ from flask import Flask
 
 # ════════ CONFIGURATION ════════
 BOT_TOKEN    = "8692833945:AAH8083uSXMwUXHyvA5w3tNSI5q_eZI14Os"
+ADMIN_ID     = 5998811981 # Aapki Admin ID
 CHANNEL_ID   = "-1003614219689" 
 CHANNEL_LINK = "https://t.me/+KspxF-Eam9s1MWNl"
 WEBSITE_LINK = "https://tirangacasino.top/#/register?invitationCode=488115419684"
+
+# FIREBASE DATABASE LINK (For App Login System)
+FIREBASE_URL = "https://tiranga-vip-c6f29-default-rtdb.firebaseio.com/users"
 
 STATS_FILE   = "user_stats.json"
 HISTORY_FILE = "game_history.json"
@@ -29,7 +34,7 @@ bot = telebot.TeleBot(BOT_TOKEN)
 app = Flask(__name__)
 @app.route('/')
 def home():
-    return "🚀 Tiranga Bot is Alive & Running 24/7!"
+    return "🚀 Tiranga Bot v12 Master Edition is Alive & Running 24/7!"
 
 def run_web():
     port = int(os.environ.get("PORT", 8080))
@@ -81,6 +86,8 @@ def get_period():
     return f"{date_str}10001{serial:04d}"
 
 def check_join(user_id):
+    if user_id == ADMIN_ID: # Admin ko check karne ki jarurat nahi
+        return True
     try:
         status = bot.get_chat_member(CHANNEL_ID, user_id).status
         return status in ['member', 'administrator', 'creator']
@@ -125,10 +132,11 @@ def predict_big_small():
 
     total = sum(weights.values())
     norm = {k: v / total for k, v in weights.items()}
-    r, cum, final_size = random.random(), 0, "Big"
+    r, cum, final_size = "Big", 0, "Big"
+    rand_val = random.random()
     for s, w in norm.items():
         cum += w
-        if r <= cum:
+        if rand_val <= cum:
             final_size = s
             break
 
@@ -172,13 +180,78 @@ def force_sub_kb():
            InlineKeyboardButton("✅ Maine Join Kar Liya", callback_data="home"))
     return kb
 
-# ════════ MESSAGE HANDLERS ════════
+# ════════ 🛡️ ADMIN PANEL (ID/KEY GENERATOR) ════════
+
+@bot.message_handler(commands=['genid'])
+def generate_id(m):
+    if m.from_user.id != ADMIN_ID:
+        return # Sirf admin ke liye
+    try:
+        args = m.text.split()
+        if len(args) != 3:
+            bot.reply_to(m, "❌ Format: `/genid <USER_ID> <KEY>`\nExample: `/genid OM1 1234`", parse_mode="Markdown")
+            return
+            
+        user_id = args[1]
+        user_key = args[2]
+        url = f"{FIREBASE_URL}/{user_id}.json"
+        
+        payload = {"key": user_key, "status": "active"}
+        response = requests.put(url, json=payload)
+        
+        if response.status_code == 200:
+            bot.reply_to(m, f"✅ *NEW APP USER CREATED!*\n\n👤 ID: `{user_id}`\n🔑 Key: `{user_key}`\n\nAb ye user app me login kar sakta hai.", parse_mode="Markdown")
+        else:
+            bot.reply_to(m, "❌ Firebase Error! Data save nahi hua.")
+    except Exception as e:
+        bot.reply_to(m, f"❌ Error: {str(e)}")
+
+@bot.message_handler(commands=['delid'])
+def delete_id(m):
+    if m.from_user.id != ADMIN_ID:
+        return
+    try:
+        args = m.text.split()
+        if len(args) != 2:
+            bot.reply_to(m, "❌ Format: `/delid <USER_ID>`", parse_mode="Markdown")
+            return
+            
+        user_id = args[1]
+        url = f"{FIREBASE_URL}/{user_id}.json"
+        requests.delete(url)
+        bot.reply_to(m, f"🗑️ User `{user_id}` delete ho gaya hai! Ab wo app nahi khol payega.", parse_mode="Markdown")
+    except Exception as e:
+        bot.reply_to(m, f"❌ Error: {str(e)}")
+
+@bot.message_handler(commands=['users'])
+def list_users(m):
+    if m.from_user.id != ADMIN_ID:
+        return
+    try:
+        response = requests.get(f"{FIREBASE_URL}.json")
+        data = response.json()
+        
+        if data:
+            user_list = "👥 *APP ACTIVE USERS:*\n\n"
+            for uid, details in data.items():
+                user_list += f"ID: `{uid}` | Key: `{details.get('key', 'N/A')}`\n"
+            bot.reply_to(m, user_list, parse_mode="Markdown")
+        else:
+            bot.reply_to(m, "Abhi tak koi App user nahi banaya gaya hai.")
+    except Exception as e:
+        bot.reply_to(m, f"❌ Error: {str(e)}")
+
+# ════════ REGULAR MESSAGE HANDLERS ════════
 @bot.message_handler(commands=["start"])
 def h_start(m):
     init_user(m.from_user.id)
-    text = (f"🌟 *Welcome to Tiranga Loss Recovery Bot* 🌟\n━━━━━━━━━━━━━━━━━━━━\n"
+    text = (f"🌟 *Welcome to Tiranga Loss Recovery Bot v12* 🌟\n━━━━━━━━━━━━━━━━━━━━\n"
             f"Namaste *{m.from_user.first_name}* ji! 👋\n"
             f"Ye bot aapko 3-Level 100% win prediction dega.\n\n⚠️ *Pehle hamara Official Channel join karein!*")
+    
+    if m.from_user.id == ADMIN_ID:
+        text += "\n\n👑 *ADMIN COMMANDS:*\n`/genid <ID> <KEY>` : Create App User\n`/delid <ID>` : Delete User\n`/users` : Check All Users"
+
     bot.send_message(m.chat.id, text, parse_mode="Markdown", reply_markup=force_sub_kb())
 
 @bot.message_handler(commands=["result"])
@@ -198,7 +271,7 @@ def handle_cb(call):
     try: bot.answer_callback_query(call.id)
     except: pass
 
-    if not check_join(uid) and str(uid) != "5998811981":
+    if not check_join(uid):
         bot.send_message(cid, "⚠️ *Access Denied!*\nPehle hamara official channel join karein.", parse_mode="Markdown", reply_markup=force_sub_kb())
         return
 
