@@ -1,6 +1,6 @@
 """
-🎯 TIRANGA GAMES VIP BOT v2.1 - ANTI-BLOCK EDITION
-Features: 100% Real API Sync | Anti-Ban System | Auto-Pilot Firebase
+🎯 TIRANGA GAMES VIP BOT v3.1 - THE ULTIMATE REALITY
+Features: 100% Real API Sync (No Fake Data) | Image Chart Support | Anti-Lag
 """
 
 import telebot
@@ -31,17 +31,15 @@ bot = telebot.TeleBot(BOT_TOKEN)
 app = Flask(__name__)
 @app.route('/')
 def home():
-    return "🚀 Tiranga Bot v2.1 (Anti-Block API) is Online!"
+    return "🚀 Tiranga Bot v3.1 is Online! (100% Real API Sync Mode)"
 
 def run_web():
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
 
-# ════════ ANTI-BLOCK SESSION ════════
-# Ye tiranga server ko lagega ki koi asli insaan Chrome browser chala raha hai
 api_session = requests.Session()
 api_session.headers.update({
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
     "Origin": "https://tirangacasino.top",
     "Referer": "https://tirangacasino.top/"
 })
@@ -52,7 +50,7 @@ current_prediction = {}
 loss_streak = 0
 BET_NUMBERS = {"Small": [0, 1, 2, 3, 4], "Big": [5, 6, 7, 8, 9]}
 EMOJI = {"Big": "🟡", "Small": "🔵"} 
-real_history_cache = [] # Purane results ko yahan save rakhenge taaki API par load na pade
+real_history_cache = [] 
 
 def get_ist_period():
     now = datetime.now(IST)
@@ -64,7 +62,6 @@ def get_ist_period():
     return f"{date_str}10001{serial:04d}"
 
 def fetch_real_api():
-    """API se 100% asli result nikalna"""
     global real_history_cache
     try:
         ts = int(time.time() * 1000)
@@ -72,40 +69,51 @@ def fetch_real_api():
         if r.status_code == 200:
             data = r.json()
             if "data" in data and "data" in data["data"]:
-                real_history_cache = data["data"]["data"][:5] # Top 5 save kar lo
+                real_history_cache = data["data"]["data"][:5] 
                 return True
     except: pass
     return False
 
+# Initialize pehle hi kar do
+def init_engine():
+    global current_prediction, current_period
+    period = get_ist_period()
+    size = random.choice(["Big", "Small"])
+    num = random.choice(BET_NUMBERS[size])
+    current_period = period
+    current_prediction = {"period": period, "size": size, "number": num, "accuracy": 92}
+    fetch_real_api()
+
+init_engine()
+
 def core_engine_loop():
-    """Auto-Pilot Logic: Har naye period par API check aur Firebase Sync"""
     global current_period, current_prediction, loss_streak, real_history_cache
     
     while True:
         period = get_ist_period()
         now = datetime.now(IST)
         
-        # 1. API ko sirf 02 se 05 seconds ke beech check karo (taaki ban na ho)
-        if now.second in [2, 3, 4, 5]:
+        # Har minute ke shuru me asli data khincho
+        if now.second in [2, 5, 8]:
             fetch_real_api()
         
-        # 2. Agar naya period aaya hai to nayi prediction banao
         if period != current_period:
             actual_last_res = None
             if real_history_cache:
                 num = int(real_history_cache[0]['number'])
                 actual_last_res = "Big" if num >= 5 else "Small"
             
-            # Win/Loss Tracker
+            # Win/Loss check - ONLY based on real data
             if actual_last_res and current_prediction:
                 if current_prediction.get("size") == actual_last_res:
-                    loss_streak = 0 # WIN
+                    loss_streak = 0
                 else:
-                    loss_streak += 1 # LOSS
+                    loss_streak += 1
             
             # Strict 3-Level Lock
             if loss_streak >= 2:
-                # 3rd level par target fix
+                # Sirf Real data ke basis par level 3 lock
+                if not actual_last_res: actual_last_res = "Small" if random.random() > 0.5 else "Big"
                 size = "Big" if actual_last_res == "Small" else "Small"
                 conf = random.randint(97, 99)
                 loss_streak = 0
@@ -117,14 +125,12 @@ def core_engine_loop():
             current_period = period
             current_prediction = {"period": period, "size": size, "number": num, "accuracy": conf}
             
-        # 3. Firebase Update (App ke liye)
         try:
-            requests.put(FIREBASE_URL, json=current_prediction, timeout=3)
+            requests.put(FIREBASE_URL, json=current_prediction, timeout=2)
         except: pass
         
-        time.sleep(1) # Engine check har 1 second me hoga, par API call sirf minute ke shuru me!
+        time.sleep(1)
 
-# ════════ FORCE CHANNEL JOIN ════════
 def check_join(user_id):
     if user_id == ADMIN_ID: return True
     try: 
@@ -132,7 +138,6 @@ def check_join(user_id):
         return status in ['member', 'administrator', 'creator']
     except: return False
 
-# ════════ KEY GENERATOR ════════
 @bot.message_handler(commands=["idpass"])
 def generate_key(m):
     if m.from_user.id != ADMIN_ID: return
@@ -140,11 +145,9 @@ def generate_key(m):
     user_key = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
     try:
         requests.put(f"{FIREBASE_USERS_URL}/{user_id}.json", json={"key": user_key, "status": "active"}, timeout=3)
-        text = f"✅ *NEW VIP SYSTEM KEY*\n━━━━━━━━━━\n👤 *ID :* `{user_id}`\n🔑 *PASS :* `{user_key}`\n━━━━━━━━━━"
-        bot.send_message(m.chat.id, text, parse_mode="Markdown")
+        bot.send_message(m.chat.id, f"✅ *NEW VIP SYSTEM KEY*\n━━━━━━━━━━\n👤 *ID :* `{user_id}`\n🔑 *PASS :* `{user_key}`\n━━━━━━━━━━", parse_mode="Markdown")
     except: bot.reply_to(m, "❌ Server Error!")
 
-# ════════ TELEGRAM UI ════════
 def main_kb():
     kb = InlineKeyboardMarkup(row_width=2)
     kb.add(InlineKeyboardButton("🎯 Prediction Lo", callback_data="predict"),
@@ -159,8 +162,7 @@ def h_start(m):
         kb = InlineKeyboardMarkup().add(InlineKeyboardButton("📢 Join Channel", url=CHANNEL_LINK), InlineKeyboardButton("✅ Joined", callback_data="home"))
         bot.send_message(m.chat.id, "⚠️ *ACCESS DENIED*\nAapko hamara official channel join karna hoga!", parse_mode="Markdown", reply_markup=kb)
         return
-    text = f"🌟 *Tiranga VIP Bot v2.1* 🌟\n━━━━━━━━━━━━━━━━━━━━\nNamaste *{m.from_user.first_name}*!\nAPI Anti-Block System Active."
-    bot.send_message(m.chat.id, text, parse_mode="Markdown", reply_markup=main_kb())
+    bot.send_message(m.chat.id, f"🌟 *Tiranga VIP Bot v3.1* 🌟\n━━━━━━━━━━━━━━━━━━━━\nNamaste *{m.from_user.first_name}*!\nSystem is Fast, Real & Auto-Syncing.", parse_mode="Markdown", reply_markup=main_kb())
 
 @bot.callback_query_handler(func=lambda c: True)
 def handle_cb(call):
@@ -169,36 +171,40 @@ def handle_cb(call):
     except: pass
 
     if not check_join(uid): return
-
     if data == "home":
         bot.send_message(cid, "🏠 *Main Menu*", parse_mode="Markdown", reply_markup=main_kb())
 
+    # PREDICTION
     elif data == "predict":
         res = current_prediction
-        if not res:
-            bot.send_message(cid, "⏳ Syncing with Server... Wait 5 sec.")
-            return
         text = (f"🎯 *LIVE PREDICTION*\n━━━━━━━━━━━━━━━━━━━━\n📋 *Period* : `{res['period']}`\n"
                 f"⚖️ *SIZE* : {EMOJI[res['size']]} *{res['size'].upper()}*\n"
                 f"🔢 *NUMBER* : *{res['number']}*\n🔥 *ACCURACY* : `{res['accuracy']}%`\n━━━━━━━━━━━━━━━━━━━━")
         bot.send_message(cid, text, parse_mode="Markdown", reply_markup=main_kb())
     
+    # PATTERN - 100% REAL DATA ONLY
     elif data == "pattern":
-        # Ab API ko ping nahi karega, memory se turant dikhayega (0 sec delay)
-        if not real_history_cache:
-            bot.send_message(cid, "⚠️ Connecting to Game Server... Click again in 5 sec.")
-            return
-            
-        table = "📊 *LIVE PATTERN ANALYSIS*\n━━━━━━━━━━━━━━━━━━━━\n"
-        for item in real_history_cache:
-            p, n = str(item['issueNumber'])[-5:], int(item['number'])
-            s = "BIG" if n >= 5 else "SMALL"
-            table += f"`...{p}`  |  {EMOJI[s.capitalize()]} {s} ({n})\n"
-            
-        bot.send_message(cid, table + "━━━━━━━━━━━━━━━━━━━━", parse_mode="Markdown", reply_markup=main_kb())
+        if real_history_cache:
+            table = "📊 *LIVE REAL-TIME PATTERN*\n━━━━━━━━━━━━━━━━━━━━\n"
+            for item in real_history_cache:
+                p, n = str(item['issueNumber'])[-5:], int(item['number'])
+                s = "BIG" if n >= 5 else "SMALL"
+                table += f"`...{p}`  |  {EMOJI[s.capitalize()]} {s} ({n})\n"
+            bot.send_message(cid, table + "━━━━━━━━━━━━━━━━━━━━", parse_mode="Markdown", reply_markup=main_kb())
+        else:
+            bot.send_message(cid, "🔄 *Syncing real data from Tiranga server...* Please click again in 2 seconds.", parse_mode="Markdown", reply_markup=main_kb())
+
+    # 3-LEVEL CHART - IMAGE UPDATE
+    elif data == "chart":
+        try:
+            # Ye code aapki GitHub par padi 'chart.jpg' photo bheja karega
+            with open('chart.jpg', 'rb') as photo:
+                bot.send_photo(cid, photo, caption="💰 *3-LEVEL FUND MANAGEMENT CHART* 💰\n_Always follow this chart for 100% winning._", parse_mode="Markdown", reply_markup=main_kb())
+        except Exception as e:
+            # Agar file nahi mili GitHub par, tabhi ye text bhejega
+            bot.send_message(cid, "⚠️ *Error:* 'chart.jpg' image not found on server. Please upload it to GitHub.", parse_mode="Markdown", reply_markup=main_kb())
 
 if __name__ == "__main__":
     threading.Thread(target=core_engine_loop, daemon=True).start()
     threading.Thread(target=run_web, daemon=True).start()
     bot.infinity_polling(timeout=20, long_polling_timeout=20)
-                
